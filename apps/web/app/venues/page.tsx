@@ -17,6 +17,7 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { motion } from 'framer-motion';
+import { clearCookie, getReviewedTimeFromCookie, hasSubmittedRecently, latestSubmissionTimeFromCookie, markVenueAsSurveyed } from "../lib/cookies/venues";
 
 
 // export const runtime = "edge";
@@ -24,62 +25,7 @@ import { motion } from 'framer-motion';
 // TODO
 // 4. CHAT PAGE ??
 
-function readCookie(): Record<string, string> {
-  const cookieName = `userVenueSurveys`;
-  const lastSubmission = document.cookie.split('; ').find(row => row.startsWith(`${cookieName}=`));
-  if(lastSubmission){
-    // Some b64 strings can contain equal signs, so just split it based on the exact cookie name
-    const c = lastSubmission.split(`${cookieName}=`);
-    const jsonString = c[1] ? atob(c[1]) : '';
-    // 3. Parse the JSON string back into an object
-    const jsonObject = JSON.parse(jsonString);
-    return jsonObject;
-  }
-  return {};
-}
 
-function clearCookie() {
-  const cookieName = `userVenueSurveys`;
-  document.cookie = `${cookieName}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-}
-
-function markVenueAsSurveyed(venueName: string){
-  const cookieName = `userVenueSurveys`;
-  let existingValue = readCookie();
-  existingValue[venueName] = new Date().toISOString();
-  const base64Encoded = btoa(JSON.stringify(existingValue));
-  // Max age is 12 hours
-  document.cookie = `${cookieName}=${base64Encoded}; path=/; max-age=43200`;
-}
-
-function hasSubmittedRecently(venueName?: string ) {
-  if(!venueName){
-    return false;
-  }
-  const c = readCookie();
-  if (venueName in c) {
-    return true;
-  }
-  return false;
-}
-
-function latestSubmissionTimeFromCookie(){
-  const cookieData = readCookie();
-  if (Object.keys(cookieData).length === 0) {
-    return null;
-  }
-
-  const dates = Object.values(cookieData).map(dateString => new Date(dateString));
-  return new Date(Math.max(...dates.map(date => date.getTime())));
-}
-
-function getReviewedTimeFromCookie(venueName: string){
-  const cookieData = readCookie();
-  if(cookieData){
-    return cookieData[venueName] ? new Date(cookieData[venueName]) : null;
-  }
-  return null;
-}
 
 export default function Page() {
   const SetThemeButton = getThemeToggler();
@@ -97,7 +43,6 @@ export default function Page() {
     const isAdmin = searchParams.get('adminMode') !== null;
     setIsAdminMode(isAdmin);
   }, []);
-
 
   useEffect(() => {
     async function fetchVenues() {
@@ -138,7 +83,12 @@ export default function Page() {
           </button>
         </div>}
       </div>
-      <div className="max-w-2xl text-start w-full mt-16">
+      <div className="flex items-center justify-center text-2xl py-4">
+          <h1>
+            Is it Chill Tonight?  
+          </h1>
+      </div>
+      <div className="max-w-2xl text-start w-full mt-8">
         <VenueSelect venues={venues} setSelectedVenue={setSelectedVenue}></VenueSelect>
         {!userSubmittedRecently && <VenueSurvey venue={selectedVenue} setUserSubmittedRecently={setUserSubmittedRecently} userRateLimited={userRateLimited}/>}
         {userSubmittedRecently && selectedVenue && latestSubmissionTime &&
@@ -190,8 +140,6 @@ function VenueSelect({ venues, setSelectedVenue}: { venues: VenueTypeOption[], s
 }
 
 function VenueSurvey({venue, setUserSubmittedRecently, userRateLimited}: {venue: VenueTypeOption |null, setUserSubmittedRecently: any, userRateLimited: boolean}) {
-  
-
   const venueSurveySchema = z.object({
     mellowOrDancey: z.number().min(0).max(100),
     crowded: z.number().min(0).max(100),
