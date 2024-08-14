@@ -10,5 +10,8 @@
 		"pages:build": "bunx @cloudflare/next-on-pages",
 		"preview": "bun pages:build && wrangler pages dev",
 		"deploy": "bun pages:build && wrangler pages deploy"
+	},
+	"dependencies": {
+		"framer-motion": "^11.3.24"
 	}
 }

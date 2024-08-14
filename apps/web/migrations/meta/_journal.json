@@ -1,13 +1,27 @@
 {
-	"version": "6",
-	"dialect": "sqlite",
-	"entries": [
-		{
-			"idx": 0,
-			"version": "6",
-			"when": 1716401875343,
-			"tag": "0000_setup",
-			"breakpoints": true
-		}
-	]
+  "version": "6",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1716401875343,
+      "tag": "0000_setup",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1723501055219,
+      "tag": "0001_hesitant_caretaker",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1723564110158,
+      "tag": "0002_ancient_energizer",
+      "breakpoints": true
+    }
+  ]
 }

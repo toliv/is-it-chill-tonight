@@ -73,6 +73,11 @@ const config = {
 				"accordion-down": "accordion-down 0.2s ease-out",
 				"accordion-up": "accordion-up 0.2s ease-out",
 			},
+			fontFamily: {
+				'server-mono': ['var(--font-server-mono)'],
+				'sans': ['var(--font-server-mono)'], // This sets ServerMono as the default sans font
+
+			}
 		},
 	},
 	plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],

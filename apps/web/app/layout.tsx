@@ -3,8 +3,15 @@ import "@repo/tailwind-config/globals.css";
 import type { Metadata } from "next";
 import { ThemeScript } from "next-app-theme/theme-script";
 import { Inter } from "next/font/google";
+import localFont from 'next/font/local'
+
 
 const inter = Inter({ subsets: ["latin"] });
+
+const serverMono = localFont({
+  src: '../public/fonts/ServerMono-Regular.woff2',
+  variable: '--font-server-mono',
+})
 
 export const metadata: Metadata = {
 	title: "Create Turborepo",
@@ -21,7 +28,7 @@ export default function RootLayout({
 			<head>
 				<ThemeScript />
 			</head>
-			<body className={inter.className}>{children}</body>
+			<body className={`${serverMono.variable} font-sans`}>{children}</body>
 		</html>
 	);
 }

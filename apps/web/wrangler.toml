@@ -1,4 +1,4 @@
-name = "cloudflare-saas-starter"
+name = "is-it-chill-tonight"
 compatibility_date = "2024-03-29"
 compatibility_flags = [ "nodejs_compat" ]
 pages_build_output_dir = ".vercel/output/static"
@@ -8,5 +8,5 @@ mode = "smart"
 
 [[d1_databases]]
 binding = "DATABASE"
-database_name = "new-commit"
-database_id = "6e4ffe08-4acc-4436-9677-9fa0d2cf3bfa"
+database_name = "is-it-chill-tonight-db"
+database_id = "fc3f808b-3a8d-4bff-88f5-3e82eaa4d9a2"

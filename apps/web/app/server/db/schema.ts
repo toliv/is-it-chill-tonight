@@ -61,3 +61,33 @@ export const verificationTokens = sqliteTable(
 		compoundKey: primaryKey({ columns: [vt.identifier, vt.token] }),
 	}),
 );
+
+export const venues = sqliteTable(
+	"venues",
+	{
+		id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+		name: text("name").notNull()
+	}
+);
+
+export const surveys = sqliteTable(
+	"surveys",
+	{
+		id: text("id")
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		venueId: text("venueId")
+			.notNull()
+			.references(() => venues.id, { onDelete: "cascade" }),
+		mellowOrDancey: integer("mellowOrDancey").notNull(),
+		crowded: integer("crowded").notNull(),
+		securityChill: integer("securityChill").notNull(),
+		ratio: integer("ratio").notNull(),
+		lineSpeed: integer("lineSpeed").notNull(),
+		createdAt: integer("createdAt", { mode: "timestamp_ms" })
+			.notNull()
+			.$defaultFn(() => new Date()),
+	}
+);
