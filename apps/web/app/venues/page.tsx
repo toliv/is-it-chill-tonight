@@ -20,6 +20,17 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from "@repo/ui/src/tooltip";
+import {
+  Carousel,
+  CarouselItem,
+  CarouselContent,
+} from "@repo/ui/src/carousel";
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@repo/ui/src/chart";
 import { getThemeToggler } from "../lib/get-theme-button";
 import { Slider } from "@repo/ui/src/slider";
 import { SliderThumb } from "@radix-ui/react-slider";
@@ -31,6 +42,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from 'framer-motion';
 import { clearCookie, getReviewedTimeFromCookie, hasSubmittedRecently, latestSubmissionTimeFromCookie, markVenueAsSurveyed, readCookie } from "../lib/cookies/venues";
 import { formatDateWithEarlyMorningAdjustment, isBetween8PMand4AMET } from "../lib/time/utils";
+
+import { Bar, BarChart, CartesianGrid, LabelList, XAxis } from "recharts"
+
+
+import Autoplay from "embla-carousel-autoplay"
+
 
 export default function Page() {
   const SetThemeButton = getThemeToggler();
@@ -60,7 +77,9 @@ export default function Page() {
 
   useEffect(() => {
     const checkTime = () => {
-      setVotingWindowOpen(isBetween8PMand4AMET(new Date()) || isAdminMode);
+      setVotingWindowOpen(true);
+      // No need to prevent voting for now
+      // setVotingWindowOpen(isBetween8PMand4AMET(new Date()) || isAdminMode);
     };
 
     checkTime(); // Check immediately
@@ -178,6 +197,7 @@ function VenueSurvey({venue, refetchCookie, cookieData}: {venue: VenueTypeOption
     securityChill: z.number().min(0).max(100),
     ratio: z.number().min(0).max(100),
     lineSpeed: z.number().min(0).max(100),
+    comment: z.string().max(200).optional(),
   });
 
   type VenueSurveyData = z.infer<typeof venueSurveySchema>;
@@ -374,6 +394,24 @@ function VenueSurvey({venue, refetchCookie, cookieData}: {venue: VenueTypeOption
         />
         <div className="text-xl">⏳</div>
       </div>
+      <div>
+        Comment (optional)
+      </div>
+      <div className="flex gap-4 items-center">
+        <Controller
+          name="comment"
+          control={form.control}
+          render={({ field }) => (
+            <textarea
+              {...field}
+              className={`text-black w-full p-2 border rounded ${formDisabled ? "cursor-not-allowed bg-gray-100" : ""}`}
+              placeholder="Enter your comment here..."
+              maxLength={200}
+              disabled={formDisabled}
+            />
+          )}
+        />
+      </div>
       <button 
         type="submit" 
         className={`mt-4 text-white px-4 py-2 rounded ${
@@ -415,9 +453,6 @@ function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
   
   return (surveyResults &&
     <>
-    <div className="text-sm">
-      {`Number of submissions: ${surveyResults.count}`}
-    </div>
     <div className="flex flex-col py-8 gap-4">
       <div>
         Mellow or Dance-y?
@@ -462,8 +497,16 @@ function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
         <SurveyResultSlider result={surveyResults.avgLineSpeed} label={"fast"}/>
         <div className="text-xl">⏳</div>
       </div>
-      
     </div>
+    {surveyResults.topComments && <div className="flex justify-center items-center">
+      <CommentCarousel comments={surveyResults.topComments}/>
+    </div>}
+    {
+      surveyResults.hourlySubmissions && 
+        <div className="flex justify-center items-center w-full h-[200px] mt-12">
+        <SubmissionGraph hourlySubmissions={surveyResults.hourlySubmissions} />
+      </div>
+    }
     </>
   )
 }
@@ -506,3 +549,91 @@ const SurveyResultSlider = ({ result, label }: {result: number, label: string}) 
     </TooltipProvider>
   );
 };
+
+function CommentCarousel({comments} : {comments: any[]}){
+
+  const commentTime = (createdAt: string) => new Date(createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+  console.log(comments[0].createdAt);
+  return (
+    <>
+    <div className="text-2xl py-2">
+      Top Comments
+    </div>
+    <Carousel
+      opts={{
+        align: "start",
+        loop: true,
+      }}
+      orientation="vertical"
+      className="w-full "
+      plugins={[
+        Autoplay({
+          delay: 2500,
+        }),
+      ]}
+    >
+      <CarouselContent className="-mt-1 h-[100px]">
+        {comments.map((comment, index) => (
+
+          <CarouselItem key={index} className="pt-1 md:basis-1/2 ">
+            <div className="py-1">
+                <span className="text-md font-semibold text-violet-400">{`[${commentTime(comment.createdAt)}] ${comment.comment}`}</span>
+            </div>
+          </CarouselItem>
+        ))}
+      </CarouselContent>
+      {/* <CarouselPrevious />
+      <CarouselNext /> */}
+    </Carousel>
+    </>
+  )
+
+}
+
+const chartConfig = {
+  submissionCount: {
+    label: "Submission Count",
+    color: "hsl(var(--chart-1))",
+  },
+} satisfies ChartConfig
+
+function SubmissionGraph({hourlySubmissions}: {hourlySubmissions: any}){
+  return (
+    <>
+
+        <ChartContainer config={chartConfig} className="w-full h-[180px] py-4">
+          <BarChart
+            accessibilityLayer
+            data={hourlySubmissions}
+            margin={{
+              top: 20,
+            }}
+          >
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="hour"
+              tickLine={false}
+              tickMargin={10}
+              axisLine={true}
+            />
+            <ChartTooltip
+              cursor={false}
+              content={<ChartTooltipContent hideLabel />}
+            />
+            <Bar dataKey="submissionCount" fill="#A78BFA" radius={8}>
+              {/* <LabelList
+                position="top"
+                offset={12}
+                className="fill-foreground"
+                fontSize={12}
+              /> */}
+            </Bar>
+          </BarChart>
+        </ChartContainer>
+      <div className="text-right">
+        Submission History
+      </div>
+      </>
+  )
+}

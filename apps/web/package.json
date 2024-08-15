@@ -12,6 +12,8 @@
 		"deploy": "bun pages:build && wrangler pages deploy"
 	},
 	"dependencies": {
+		"@radix-ui/react-slot": "^1.1.0",
+		"embla-carousel-react": "^8.1.8",
 		"framer-motion": "^11.3.24"
 	}
 }

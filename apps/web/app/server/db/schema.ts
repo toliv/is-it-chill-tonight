@@ -86,6 +86,7 @@ export const surveys = sqliteTable(
 		securityChill: integer("securityChill").notNull(),
 		ratio: integer("ratio").notNull(),
 		lineSpeed: integer("lineSpeed").notNull(),
+		comment: text("comment"),
 		createdAt: integer("createdAt", { mode: "timestamp_ms" })
 			.notNull()
 			.$defaultFn(() => new Date()),

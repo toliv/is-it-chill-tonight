@@ -10,3 +10,6 @@ mode = "smart"
 binding = "DATABASE"
 database_name = "is-it-chill-tonight-db"
 database_id = "fc3f808b-3a8d-4bff-88f5-3e82eaa4d9a2"
+
+[ai]
+binding = "AI"

@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
 import { db } from "../../server/db";
 import { surveys } from "../../server/db/schema";
+import { desc } from 'drizzle-orm/expressions';
+
 
 export const runtime = "edge";
 
@@ -11,13 +13,14 @@ export async function POST(request: NextRequest) {
   // Instead, we need to use the table objects imported from the schema.
   // For example, to insert into the venues table:
   const body = await request.json();
-  const { venueId, mellowOrDancey, crowded, securityChill, ratio, lineSpeed } = body as {
+  const { venueId, mellowOrDancey, crowded, securityChill, ratio, lineSpeed, comment } = body as {
     venueId: string;
     mellowOrDancey: number;
     crowded: number;
     securityChill: number;
     ratio: number;
     lineSpeed: number;
+    comment: string;
   };
 
   if (!venueId || typeof mellowOrDancey !== 'number' || typeof crowded !== 'number' ||
@@ -32,6 +35,7 @@ export async function POST(request: NextRequest) {
     securityChill,
     ratio,
     lineSpeed,
+    comment,
   });
 
 	const responseText = JSON.stringify(result);
@@ -63,9 +67,6 @@ export async function GET(request: NextRequest) {
         sql`${surveys.venueId} = ${venueId} AND 
             ${surveys.createdAt} >= strftime('%s', datetime('now', '-24 hours')) * 1000`
       )
-      // .where(
-      //   sql`${surveys.venueId} = ${venueId}`
-      // )
       .groupBy(surveys.venueId);
     
     let aggregration = surveyResults[0] ?? {
@@ -76,9 +77,69 @@ export async function GET(request: NextRequest) {
       avgLineSpeed: 50,
       count: 0,
     }
+    
+    // Get some of the best comments
+    let topComments = await db.select({
+      comment: surveys.comment,
+      createdAt: surveys.createdAt,
+    })
+    .from(surveys)
+    .where(
+      sql`${surveys.venueId} = ${venueId} AND 
+          comment IS NOT NULL`
+    ).limit(10);
+
+    topComments = [...topComments, 
+      {comment: "The fucking DJ still hasn't come on yet. What the hell", createdAt: new Date()},
+      {comment: "many more one", createdAt: new Date()},
+      {comment: "No wayne", createdAt: new Date()},
+      {comment: "An one", createdAt: new Date()},
+      {comment: "An", createdAt: new Date()},
+      {comment: "Antony one", createdAt: new Date()},
+      {comment: "Another one", createdAt: new Date()},
+    ]
+
+    // Get histogram data
+    const hourlySubmissions = await db
+      .select({
+        submissionHour: sql<string>`strftime('%Y-%m-%dT%H:00:00', ${surveys.createdAt} / 1000, 'unixepoch')`.as('submission_hour'),
+        submissionCount: sql<number>`COUNT(*)`.as('submission_count'),
+      })
+      .from(surveys)
+      .where(
+        sql`${surveys.venueId} = ${venueId} AND 
+            ${surveys.createdAt} >= strftime('%s', datetime('now', '-24 hours')) * 1000`
+      )
+      .groupBy(sql`strftime('%Y-%m-%dT%H:00:00', ${surveys.createdAt} / 1000, 'unixepoch')`)
+      .orderBy(sql`strftime('%Y-%m-%dT%H:00:00', ${surveys.createdAt} / 1000, 'unixepoch')`);
+    
+    // Fill in missing hours with zero submissions
+    const now = new Date();
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const filledHourlySubmissions = [];
+
+    for (let i = 0; i < 24; i++) {
+      const hour = new Date(twentyFourHoursAgo.getTime() + i * 60 * 60 * 1000);
+      const hourString = hour.toISOString().slice(0, 13) + ':00:00';
+      
+      const existingSubmission = hourlySubmissions.find(
+        submission => submission.submissionHour.startsWith(hourString)
+      );
+
+      filledHourlySubmissions.push({
+        submissionHour: hourString,
+        submissionCount: existingSubmission ? existingSubmission.submissionCount : 0
+      });
+    }
+
+    const response = {
+      ...aggregration,
+      topComments,
+      hourlySubmissions: filledHourlySubmissions,
+    }
 
     // Return the survey results as JSON
-    return new Response(JSON.stringify(aggregration), {
+    return new Response(JSON.stringify(response), {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
