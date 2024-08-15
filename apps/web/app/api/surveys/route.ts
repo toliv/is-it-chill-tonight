@@ -56,13 +56,29 @@ export async function GET(request: NextRequest) {
         avgSecurityChill: sql`AVG(${surveys.securityChill})`.as('avgSecurityChill'),
         avgRatio: sql`AVG(${surveys.ratio})`.as('avgRatio'),
         avgLineSpeed: sql`AVG(${surveys.lineSpeed})`.as('avgLineSpeed'),
+        count: sql`COUNT(*)`.as('count'),
       })
       .from(surveys)
-      .where(eq(surveys.venueId, venueId))
+      .where(
+        sql`${surveys.venueId} = ${venueId} AND 
+            ${surveys.createdAt} >= strftime('%s', datetime('now', '-24 hours')) * 1000`
+      )
+      // .where(
+      //   sql`${surveys.venueId} = ${venueId}`
+      // )
       .groupBy(surveys.venueId);
+    
+    let aggregration = surveyResults[0] ?? {
+      avgMellowOrDancey: 50,
+      avgCrowded: 50,
+      avgSecurityChill: 50,
+      avgRatio: 50,
+      avgLineSpeed: 50,
+      count: 0,
+    }
 
     // Return the survey results as JSON
-    return new Response(JSON.stringify(surveyResults[0]), {
+    return new Response(JSON.stringify(aggregration), {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {

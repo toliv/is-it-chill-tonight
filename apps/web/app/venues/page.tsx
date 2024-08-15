@@ -8,6 +8,18 @@ import {
   SelectItem,
   SelectGroup,
 } from "@repo/ui/src/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@repo/ui/src/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from "@repo/ui/src/tooltip";
 import { getThemeToggler } from "../lib/get-theme-button";
 import { Slider } from "@repo/ui/src/slider";
 import { SliderThumb } from "@radix-ui/react-slider";
@@ -17,32 +29,45 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { motion } from 'framer-motion';
-import { clearCookie, getReviewedTimeFromCookie, hasSubmittedRecently, latestSubmissionTimeFromCookie, markVenueAsSurveyed } from "../lib/cookies/venues";
-
-
-// export const runtime = "edge";
-
-// TODO
-// 4. CHAT PAGE ??
-
-
+import { clearCookie, getReviewedTimeFromCookie, hasSubmittedRecently, latestSubmissionTimeFromCookie, markVenueAsSurveyed, readCookie } from "../lib/cookies/venues";
+import { formatDateWithEarlyMorningAdjustment, isBetween8PMand4AMET } from "../lib/time/utils";
 
 export default function Page() {
   const SetThemeButton = getThemeToggler();
 
   const [venues, setVenues] = useState<any>([]);
   const [selectedVenue, setSelectedVenue] = useState<VenueTypeOption | null>(null);
-  const [userSubmittedRecently, setUserSubmittedRecently] = useState<boolean>(false);
-  const [latestSubmissionTime, setLatestSubmissionTime] = useState<Date | null> (null);
-  const [userRateLimited, setUserRateLimited] = useState<boolean>(false);
-
+  const [cookieData, setCookieData] = useState<Record<string, string>>({});
   const [isAdminMode, setIsAdminMode] = useState(false);
+
+  const [votingWindowOpen, setVotingWindowOpen] = useState<boolean>(false);
+  const [votingDay, setVotingDay] = useState<string>("");
+
+  const fetchCookieData = () => {
+    const data = readCookie();
+    setCookieData(data);
+  };
+
+  useEffect(() => {
+    fetchCookieData();
+  }, []);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const isAdmin = searchParams.get('adminMode') !== null;
     setIsAdminMode(isAdmin);
   }, []);
+
+  useEffect(() => {
+    const checkTime = () => {
+      setVotingWindowOpen(isBetween8PMand4AMET(new Date()) || isAdminMode);
+    };
+
+    checkTime(); // Check immediately
+    const interval = setInterval(checkTime, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [isAdminMode]);
 
   useEffect(() => {
     async function fetchVenues() {
@@ -57,27 +82,19 @@ export default function Page() {
     fetchVenues();
   }, []);
 
-  useEffect(() => {
-    setUserSubmittedRecently(hasSubmittedRecently(selectedVenue?.name));
-    const lastSubmissionTime = latestSubmissionTimeFromCookie()
-    const rateLimited = (lastSubmissionTime && (new Date().getTime() - lastSubmissionTime.getTime() < 30 * 60 * 1000)) ? true : false;
-    setUserRateLimited(rateLimited)
-    if(selectedVenue){
-      setLatestSubmissionTime(getReviewedTimeFromCookie(selectedVenue.name));
-    }
-    
-  }, [selectedVenue, userSubmittedRecently]);
-
+  useEffect(()=> {
+    setVotingDay(formatDateWithEarlyMorningAdjustment(new Date()));
+  }, [])
 
   return (
     <main className="flex flex-col items-center justify-start min-h-screen pt-8 px-4">
       <div className="flex max-w-2xl justify-between w-full items-center">
         <SetThemeButton />
         {isAdminMode && <div>
-          <button onClick={() => {
-            clearCookie()
-            setUserSubmittedRecently(false);
-            setSelectedVenue(null);
+            <button onClick={() => {
+              clearCookie()
+              setCookieData({});
+              setSelectedVenue(null);
             }}>
             Reset Cookie
           </button>
@@ -88,20 +105,35 @@ export default function Page() {
             Is it Chill Tonight?  
           </h1>
       </div>
+      <div className="flex items-center justify-center text-lg">
+          <h3>
+            {` ${votingDay}`}
+          </h3>
+      </div>
       <div className="max-w-2xl text-start w-full mt-8">
         <VenueSelect venues={venues} setSelectedVenue={setSelectedVenue}></VenueSelect>
-        {!userSubmittedRecently && <VenueSurvey venue={selectedVenue} setUserSubmittedRecently={setUserSubmittedRecently} userRateLimited={userRateLimited}/>}
-        {userSubmittedRecently && selectedVenue && latestSubmissionTime &&
-          <div className="pt-8 flex flex-col gap-4">
-            <div className="">{`You've already reviewed ${selectedVenue.name} today at ${latestSubmissionTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })}!`}
-            </div>
-          <div>
-            Results
-          </div>
-          <div>
-            <VenueSurveyResults venue={selectedVenue} />
-          </div>
-        </div>
+        {selectedVenue &&
+          <Tabs defaultValue="results" className="w-full py-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="results">Results (24 hr)</TabsTrigger>
+              <TabsTrigger value="vote">Vote</TabsTrigger>
+            </TabsList>
+            <TabsContent value="results">
+                <VenueSurveyResults venue={selectedVenue} />
+            </TabsContent>
+            <TabsContent value="vote"> 
+                { votingWindowOpen ? (
+                    <VenueSurvey 
+                      venue={selectedVenue} 
+                      refetchCookie={fetchCookieData} 
+                      cookieData={cookieData}
+                    />
+                  ) : (
+                    <div className="text-center py-4">Survey opens at 8pm</div>
+                  )
+                }
+            </TabsContent>
+          </Tabs>
         }
       </div>
       <div></div>
@@ -139,7 +171,7 @@ function VenueSelect({ venues, setSelectedVenue}: { venues: VenueTypeOption[], s
   );
 }
 
-function VenueSurvey({venue, setUserSubmittedRecently, userRateLimited}: {venue: VenueTypeOption |null, setUserSubmittedRecently: any, userRateLimited: boolean}) {
+function VenueSurvey({venue, refetchCookie, cookieData}: {venue: VenueTypeOption, refetchCookie: any, cookieData: Record<string, string>}) {
   const venueSurveySchema = z.object({
     mellowOrDancey: z.number().min(0).max(100),
     crowded: z.number().min(0).max(100),
@@ -149,6 +181,16 @@ function VenueSurvey({venue, setUserSubmittedRecently, userRateLimited}: {venue:
   });
 
   type VenueSurveyData = z.infer<typeof venueSurveySchema>;
+
+  // The time at which the survey was submitted for this venue
+  const d = cookieData[venue.name];
+  const surveySubmittedAt = d ? new Date(d) : null;
+
+  // The time at which the survey was most recently submitted
+  const latestSubmissionAt = latestSubmissionTimeFromCookie(cookieData);
+  const rateLimited = (latestSubmissionAt && (new Date().getTime() - latestSubmissionAt.getTime() < 30 * 60 * 1000)) ? true : false;
+  const formDisabled = !!(surveySubmittedAt || rateLimited);
+
 
   const form = useForm<VenueSurveyData>({
     resolver: zodResolver(venueSurveySchema),
@@ -173,7 +215,6 @@ function VenueSurvey({venue, setUserSubmittedRecently, userRateLimited}: {venue:
 
   const onSubmit = (data: VenueSurveyData) => {
     if(venue){
-      console.log(data);
       // Handle form submission
       // POST the form data to /api/surveys
       fetch('/api/surveys', {
@@ -191,8 +232,8 @@ function VenueSurvey({venue, setUserSubmittedRecently, userRateLimited}: {venue:
         console.log('Survey submitted successfully:', result);
         // Set a cookie with the submission timestamp
         markVenueAsSurveyed(venue.name);
-        // You can add additional logic here, such as showing a success message
-        setUserSubmittedRecently(true);
+        // Refetch the cookie for the page
+        refetchCookie();
       })
       .catch(error => {
         console.error('Error submitting survey:', error);
@@ -203,11 +244,15 @@ function VenueSurvey({venue, setUserSubmittedRecently, userRateLimited}: {venue:
 
   return venue && (
     <>
-
     <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col py-8 gap-4">
     {
-      userRateLimited && <div>
-        How can you be two places at once 🤔?
+      surveySubmittedAt && <div className="text-sm text-green-300">
+        Submitted at {surveySubmittedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })}
+      </div>
+    }
+    {
+      latestSubmissionAt && !(surveySubmittedAt) && (rateLimited) && <div className="text-sm">
+        Slow down speedy! You surveyed another venue too recently. If you happened to invent teleporation email isitchill @ oliverio.dev
       </div>
     }
       <div>
@@ -220,13 +265,15 @@ function VenueSurvey({venue, setUserSubmittedRecently, userRateLimited}: {venue:
           control={form.control}
           render={({ field: { onChange, value } }) => (
             <Slider
-              className="cursor-pointer"
+            className={`${formDisabled ? "cursor-not-allowed": "cursor-pointer"}`}
               value={[value]}
               onValueChange={(vals) => onChange(vals[0])}
               max={100}
               step={1}
+              disabled={formDisabled}
             />
           )}
+          
         />
         <div className='text-xl'>🕺</div>
       </div>
@@ -240,12 +287,13 @@ function VenueSurvey({venue, setUserSubmittedRecently, userRateLimited}: {venue:
           control={form.control}
           render={({ field: { onChange, value } }) => (
             <Slider
-              className="cursor-pointer animate-fade-in"
+            className={`${formDisabled ? "cursor-not-allowed": "cursor-pointer"}`}
               value={[value]}
               onValueChange={(vals) => onChange(vals[0])}
               max={100}
               step={1}
               aria-label="crowded"
+              disabled={formDisabled}
             >
               <SliderThumb className="animate-slide-in">
                 <div className="absolute top-[-25px] left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs animate-pop-in">
@@ -270,12 +318,14 @@ function VenueSurvey({venue, setUserSubmittedRecently, userRateLimited}: {venue:
           control={form.control}
           render={({ field: { onChange, value } }) => (
             <Slider
-              className="cursor-pointer"
+            className={`${formDisabled ? "cursor-not-allowed": "cursor-pointer"}`}
               value={[value]}
               onValueChange={(vals) => onChange(vals[0])}
               max={100}
               step={1}
+              disabled={formDisabled}
             />
+            
           )}
         />
         <div className='text-xl'>🤬</div>
@@ -290,12 +340,13 @@ function VenueSurvey({venue, setUserSubmittedRecently, userRateLimited}: {venue:
           control={form.control}
           render={({ field: { onChange, value } }) => (
             <Slider
-              className="cursor-pointer"
+            className={`${formDisabled ? "cursor-not-allowed": "cursor-pointer"}`}
               value={[value]}
               onValueChange={(vals) => onChange(vals[0])}
               max={100}
               step={1}
               aria-label="ratio"
+              disabled={formDisabled}
             />
           )}
         />
@@ -311,12 +362,13 @@ function VenueSurvey({venue, setUserSubmittedRecently, userRateLimited}: {venue:
           control={form.control}
           render={({ field: { onChange, value } }) => (
             <Slider
-              className="cursor-pointer"
+              className={`${formDisabled ? "cursor-not-allowed": "cursor-pointer"}`}
               value={[value]}
               onValueChange={(vals) => onChange(vals[0])}
               max={100}
               step={1}
               aria-label="lineSpeed"
+              disabled={formDisabled}
             />
           )}
         />
@@ -326,12 +378,12 @@ function VenueSurvey({venue, setUserSubmittedRecently, userRateLimited}: {venue:
         type="submit" 
         className={`mt-4 text-white px-4 py-2 rounded ${
           form.formState.isSubmitting || form.formState.isSubmitSuccessful
-            ? 'bg-green-500' : !userRateLimited ? 
+            ? 'bg-green-500' : !formDisabled ? 
                'bg-blue-500' : 'bg-red-500'
-        } ${userRateLimited ? "hover:cursor-not-allowed": ""}`}
+        } ${rateLimited ? "hover:cursor-not-allowed": ""}`}
         disabled={
           form.formState.isSubmitting || 
-          form.formState.isSubmitSuccessful || userRateLimited
+          form.formState.isSubmitSuccessful || formDisabled
         }
       >
         {form.formState.isSubmitSuccessful ? 'Submitted!' : 'Submit'}
@@ -348,23 +400,31 @@ function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
     async function fetchSurveyResults() {
       try {
         const response = await fetch(`/api/surveys?venueId=${venue.id}`);
-        const data = await response.json();
-        setSurveyResults(data);
+        if(response){
+          const data = await response.json();
+          console.log(data);
+          setSurveyResults(data);
+        }
+
       } catch (error) {
         console.error("Error fetching venues:", error);
       }
     }
     fetchSurveyResults();
-  }, []);
+  }, [venue]);
   
   return (surveyResults &&
+    <>
+    <div className="text-sm">
+      {`Number of submissions: ${surveyResults.count}`}
+    </div>
     <div className="flex flex-col py-8 gap-4">
       <div>
         Mellow or Dance-y?
       </div>
       <div className="flex gap-4 items-center">
         <div className='text-xl'>🌴</div>
-        <SurveyResultSlider result={surveyResults.avgMellowOrDancey}/>
+        <SurveyResultSlider result={surveyResults.avgMellowOrDancey} label={"mellow"}/>
         <div className='text-xl'>🕺</div>
       </div>
       <div>
@@ -372,7 +432,7 @@ function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
       </div>
       <div className="flex gap-4 items-center">
         <div className="text-xl">🧍</div>
-        <SurveyResultSlider result={surveyResults.avgCrowded}/>
+        <SurveyResultSlider result={surveyResults.avgCrowded} label={"crowded"}/>
         <div className="flex">
           <div className="text-xl">🧍</div>
           <div className="text-xl">🧍</div>
@@ -383,7 +443,7 @@ function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
       </div>
       <div className="flex gap-4 items-center">
         <div className='text-xl'>😎</div>
-        <SurveyResultSlider result={surveyResults.avgSecurityChill}/>
+        <SurveyResultSlider result={surveyResults.avgSecurityChill} label={"chill"}/>
         <div className='text-xl'>🤬</div>
       </div>
       <div>
@@ -391,7 +451,7 @@ function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
       </div>
       <div className="flex gap-4 items-center">
         <div className="text-xl">🙋‍♀️</div>
-        <SurveyResultSlider result={surveyResults.avgRatio}/>
+        <SurveyResultSlider result={surveyResults.avgRatio} label={"F/M"}/>
         <div className="text-xl">🙆‍♂️</div>
       </div>
       <div>
@@ -399,16 +459,17 @@ function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
       </div>
       <div className="flex gap-4 items-center">
       <div className="text-xl">💨</div>
-        <SurveyResultSlider result={surveyResults.avgLineSpeed}/>
+        <SurveyResultSlider result={surveyResults.avgLineSpeed} label={"fast"}/>
         <div className="text-xl">⏳</div>
       </div>
       
     </div>
+    </>
   )
 }
 
 
-const SurveyResultSlider = ({ result }: {result: number}) => {
+const SurveyResultSlider = ({ result, label }: {result: number, label: string}) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -424,6 +485,9 @@ const SurveyResultSlider = ({ result }: {result: number}) => {
   const rightSide = resultRounded > 50; 
 
   return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
     <div className="w-full mx-auto">
       <div className={`relative h-4  rounded-full overflow-hidden shadow-md ${rightSide ? "bg-red-600" : "bg-green-700"}`}>
         <motion.div
@@ -434,5 +498,11 @@ const SurveyResultSlider = ({ result }: {result: number}) => {
         />
       </div>
     </div>
+    </TooltipTrigger>
+    <TooltipContent>
+      <p className="text-xxs"><span className="text-md">{`${resultRounded}`}</span>{`% ${label}`}</p>
+    </TooltipContent>
+    </Tooltip>
+    </TooltipProvider>
   );
 };

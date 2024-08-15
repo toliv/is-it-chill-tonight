@@ -39,12 +39,11 @@ export function hasSubmittedRecently(venueName?: string ) {
   return false;
 }
 
-export function latestSubmissionTimeFromCookie(){
-  const cookieData = readCookie();
+export function latestSubmissionTimeFromCookie(cookieData: Record<string,string>){
+  
   if (Object.keys(cookieData).length === 0) {
     return null;
   }
-
   const dates = Object.values(cookieData).map(dateString => new Date(dateString));
   return new Date(Math.max(...dates.map(date => date.getTime())));
 }
