@@ -433,6 +433,29 @@ function VenueSurvey({venue, refetchCookie, cookieData}: {venue: VenueTypeOption
 
 function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
   const [surveyResults, setSurveyResults] = useState<any>();
+  const [eventsToday, setEventsToday] = useState<any>();
+
+  useEffect(() => {
+    async function fetchEvents() {
+      try {
+        console.log("SEEKING FOR ");
+        console.log(venue.id)
+        const response : any = await fetch(`/api/events?venueId=${venue.id}`);
+        if(response){
+          const data = await response.json();
+          console.log(data);
+          console.log(data.data)
+          setEventsToday(data.data);
+        }
+
+      } catch (error) {
+        console.error("Error fetching venues:", error);
+      }
+    }
+    fetchEvents();
+  }, [venue])
+
+  
 
   useEffect(() => {
     async function fetchSurveyResults() {
@@ -440,7 +463,7 @@ function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
         const response = await fetch(`/api/surveys?venueId=${venue.id}`);
         if(response){
           const data = await response.json();
-          console.log(data);
+          // console.log(data);
           setSurveyResults(data);
         }
 
@@ -453,6 +476,9 @@ function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
   
   return (surveyResults &&
     <>
+    {eventsToday && eventsToday[0] && <div className="text-lg text-center">
+      {`Event today: ${eventsToday[0].title}`}
+    </div>}
     <div className="flex flex-col py-8 gap-4">
       <div>
         Mellow or Dance-y?
@@ -531,15 +557,20 @@ const SurveyResultSlider = ({ result, label }: {result: number, label: string}) 
     <TooltipProvider delayDuration={200}>
       <Tooltip>
         <TooltipTrigger asChild>
-    <div className="w-full mx-auto">
-      <div className={`relative h-4  rounded-full overflow-hidden shadow-md ${rightSide ? "bg-red-600" : "bg-green-700"}`}>
-        <motion.div
-          className={`absolute top-0 left-0 h-full rounded-full ${rightSide ? "bg-green-700" : "bg-red-600"}`}
-          initial={{ width: 0 }}
-          animate={{ width: isLoaded ? `${result}%` : 0 }}
-          transition={{ duration: 1, ease: "easeOut" }}
-        />
-      </div>
+    <div className="w-full mx-auto flex gap-1">
+      <motion.div
+        className={`h-4 rounded-md shadow-md bg-violet-400`}
+        initial={{ width: 0 }}
+        animate={{ width: isLoaded ? `${result}%` : 0 }}
+        transition={{ duration: 1, ease: "easeOut" }}
+      />
+      <div className="w-[2px]" /> {/* This creates the 2px gap */}
+      <motion.div
+        className={`h-4 rounded-md shadow-md bg-yellow-200`}
+        initial={{ width: "100%" }}
+        animate={{ width: isLoaded ? `${100 - result}%` : "100%" }}
+        transition={{ duration: 1, ease: "easeOut" }}
+      />
     </div>
     </TooltipTrigger>
     <TooltipContent>
@@ -632,7 +663,7 @@ function SubmissionGraph({hourlySubmissions}: {hourlySubmissions: any}){
           </BarChart>
         </ChartContainer>
       <div className="text-right">
-        Submission History
+        Pulse Check
       </div>
       </>
   )

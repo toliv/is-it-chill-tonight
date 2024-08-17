@@ -29,6 +29,20 @@
       "when": 1723743230363,
       "tag": "0003_empty_shatterstar",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1723904339647,
+      "tag": "0004_kind_marauders",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1723924982692,
+      "tag": "0005_colorful_talon",
+      "breakpoints": true
     }
   ]
 }

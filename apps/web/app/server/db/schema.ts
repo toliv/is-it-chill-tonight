@@ -92,3 +92,29 @@ export const surveys = sqliteTable(
 			.$defaultFn(() => new Date()),
 	}
 );
+
+export const events = sqliteTable(
+	"events",
+	{
+		id: text("id").primaryKey(),
+		title: text("title").notNull(),
+		artistNames: text("artistNames").notNull(),
+		startTime: integer("startTime", {mode: "timestamp_ms"}).notNull(),
+		endTime: integer("endTime", {mode: "timestamp_ms"}).notNull(),
+		venueId: text("venueId")
+		.notNull()
+		.references(() => venues.id, { onDelete: "cascade" }),
+	}
+)
+
+// Table tracks when we've updated as a proxy for a poorman's cron
+export const eventSyncWatermarks = sqliteTable(
+	"eventSyncWatermarks",
+	{
+		id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+		createdAt: integer("createdAt", { mode: "timestamp_ms" })
+		.notNull()
+		.$defaultFn(() => new Date()),
+		eventsSynced :integer("eventsSynced").notNull().default(0),
+	}
+)
