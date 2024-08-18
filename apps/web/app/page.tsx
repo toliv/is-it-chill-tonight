@@ -1,118 +1,678 @@
-import { Button } from "@repo/ui/src/button";
-import { sql } from "drizzle-orm";
+"use client";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectLabel,
+  SelectItem,
+  SelectGroup,
+} from "@repo/ui/src/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@repo/ui/src/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from "@repo/ui/src/tooltip";
+import {
+  Carousel,
+  CarouselItem,
+  CarouselContent,
+} from "@repo/ui/src/carousel";
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@repo/ui/src/chart";
 import { getThemeToggler } from "./lib/get-theme-button";
-import { auth, signIn, signOut } from "./server/auth";
-import { db } from "./server/db";
-import { users } from "./server/db/schema";
+import { Slider } from "@repo/ui/src/slider";
+import { SliderThumb } from "@radix-ui/react-slider";
+import { useEffect, useState } from "react";
+import { z } from "zod";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
-export const runtime = "edge";
+import { motion } from 'framer-motion';
+import { clearCookie, getReviewedTimeFromCookie, hasSubmittedRecently, latestSubmissionTimeFromCookie, markVenueAsSurveyed, readCookie } from "./lib/cookies/venues";
+import { formatDateWithEarlyMorningAdjustment, isBetween8PMand4AMET } from "./lib/time/utils";
 
-export default async function Page() {
-	const usr = await auth();
+import { Bar, BarChart, CartesianGrid, LabelList, XAxis } from "recharts"
 
-	const userCount = await db
-		.select({
-			count: sql<number>`count(*)`.mapWith(Number),
-		})
-		.from(users);
 
-	const SetThemeButton = getThemeToggler();
+import Autoplay from "embla-carousel-autoplay"
 
-	return (
-		<main className="flex flex-col items-center justify-center min-h-screen">
-			<div className="flex max-w-2xl justify-between w-full">
-				<SetThemeButton />
 
-				<div className="flex gap-2 items-center justify-center">
-					{" "}
-					<svg
-						viewBox="0 0 256 116"
-						xmlns="http://www.w3.org/2000/svg"
-						width="45px"
-						height="45px"
-						preserveAspectRatio="xMidYMid"
-						role="img"
-						aria-label="Cloudflare logo"
-					>
-						<path
-							fill="#FFF"
-							d="m202.357 49.394-5.311-2.124C172.085 103.434 72.786 69.289 66.81 85.997c-.996 11.286 54.227 2.146 93.706 4.059 12.039.583 18.076 9.671 12.964 24.484l10.069.031c11.615-36.209 48.683-17.73 50.232-29.68-2.545-7.857-42.601 0-31.425-35.497Z"
-						/>
-						<path
-							fill="#F4811F"
-							d="M176.332 108.348c1.593-5.31 1.062-10.622-1.593-13.809-2.656-3.187-6.374-5.31-11.154-5.842L71.17 87.634c-.531 0-1.062-.53-1.593-.53-.531-.532-.531-1.063 0-1.594.531-1.062 1.062-1.594 2.124-1.594l92.946-1.062c11.154-.53 22.839-9.56 27.087-20.182l5.312-13.809c0-.532.531-1.063 0-1.594C191.203 20.182 166.772 0 138.091 0 111.535 0 88.697 16.995 80.73 40.896c-5.311-3.718-11.684-5.843-19.12-5.31-12.747 1.061-22.838 11.683-24.432 24.43-.531 3.187 0 6.374.532 9.56C16.996 70.107 0 87.103 0 108.348c0 2.124 0 3.718.531 5.842 0 1.063 1.062 1.594 1.594 1.594h170.489c1.062 0 2.125-.53 2.125-1.594l1.593-5.842Z"
-						/>
-						<path
-							fill="#FAAD3F"
-							d="M205.544 48.863h-2.656c-.531 0-1.062.53-1.593 1.062l-3.718 12.747c-1.593 5.31-1.062 10.623 1.594 13.809 2.655 3.187 6.373 5.31 11.153 5.843l19.652 1.062c.53 0 1.062.53 1.593.53.53.532.53 1.063 0 1.594-.531 1.063-1.062 1.594-2.125 1.594l-20.182 1.062c-11.154.53-22.838 9.56-27.087 20.182l-1.063 4.78c-.531.532 0 1.594 1.063 1.594h70.108c1.062 0 1.593-.531 1.593-1.593 1.062-4.25 2.124-9.03 2.124-13.81 0-27.618-22.838-50.456-50.456-50.456"
-						/>
-					</svg>
-					<span className="italic">Cloudflare Next Saas Starter</span>
-				</div>
+export default function Page() {
+  const SetThemeButton = getThemeToggler();
 
-				<div className="border border-black dark:border-white rounded-2xl p-2 flex items-center">
-					Start by editing apps/web/page.tsx
-				</div>
-			</div>
+  const [venues, setVenues] = useState<any>([]);
+  const [selectedVenue, setSelectedVenue] = useState<VenueTypeOption | null>(null);
+  const [cookieData, setCookieData] = useState<Record<string, string>>({});
+  const [isAdminMode, setIsAdminMode] = useState(false);
 
-			<div className="max-w-2xl text-start w-full mt-16">
-				Welcome to Cloudflare Next Saas Starter. <br /> Built a full stack app
-				using production-ready tools and frameworks, host on Cloudflare
-				instantly.
-				<br />
-				An opinionated, batteries-included framework with{" "}
-				<a
-					className="text-transparent bg-clip-text bg-gradient-to-r from-[#a93d64] to-[#275ba9]"
-					href="https://turbo.build"
-				>
-					Turborepo
-				</a>{" "}
-				and Nextjs. Fully Typesafe. Best practices followed by default.
-				<br /> <br />
-				Here's what the stack includes:
-				<ul className="list-disc mt-4 prose dark:prose-invert">
-					<li>
-						Authentication with <code>next-auth</code>
-					</li>
-					<li>Database using Cloudflare's D1 serverless databases</li>
-					<li>Drizzle ORM, already connected to your database and auth ⚡</li>
-					<li>Light/darkmode theming that works with server components (!)</li>
-					<li>Styling using TailwindCSS and ShadcnUI</li>
-					<li>Turborepo with a landing page and shared components</li>
-					<li>Cloudflare wrangler for quick functions on the edge</li>
-					<li>
-						... best part: everything's already set up for you. Just code!
-					</li>
-				</ul>
-				<div className="mt-4 flex flex-col gap-2">
-					<span>Number of users in database: {userCount[0]!.count}</span>
-				</div>
-				{usr?.user?.email ? (
-					<>
-						<div className="mt-4 flex flex-col gap-2">
-							<span>Hello {usr.user.name} 👋</span>
-							<span>{usr.user.email}</span>
-						</div>
-						<form
-							action={async () => {
-								"use server";
-								await signOut();
-							}}
-						>
-							<Button className="mt-4">Sign out</Button>
-						</form>
-					</>
-				) : (
-					<form
-						action={async () => {
-							"use server";
-							await signIn("google");
-						}}
-					>
-						<Button className="mt-4">Login with Google</Button>
-					</form>
-				)}
-			</div>
-		</main>
-	);
+  const [votingWindowOpen, setVotingWindowOpen] = useState<boolean>(false);
+  const [votingDay, setVotingDay] = useState<string>("");
+
+  const fetchCookieData = () => {
+    const data = readCookie();
+    setCookieData(data);
+  };
+
+  useEffect(() => {
+    fetchCookieData();
+  }, []);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const isAdmin = searchParams.get('adminMode') !== null;
+    setIsAdminMode(isAdmin);
+  }, []);
+
+  useEffect(() => {
+    const checkTime = () => {
+      setVotingWindowOpen(true);
+      // No need to prevent voting for now
+      // setVotingWindowOpen(isBetween8PMand4AMET(new Date()) || isAdminMode);
+    };
+
+    checkTime(); // Check immediately
+    const interval = setInterval(checkTime, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [isAdminMode]);
+
+  useEffect(() => {
+    async function fetchVenues() {
+      try {
+        const response = await fetch("/api/venues");
+        const data = await response.json();
+        setVenues(data);
+      } catch (error) {
+        console.error("Error fetching venues:", error);
+      }
+    }
+    fetchVenues();
+  }, []);
+
+  useEffect(()=> {
+    setVotingDay(formatDateWithEarlyMorningAdjustment(new Date()));
+  }, [])
+
+  return (
+    <main className="flex flex-col items-center justify-start min-h-screen pt-8 px-4">
+      <div className="flex max-w-2xl justify-between w-full items-center">
+        <SetThemeButton />
+        {isAdminMode && <div>
+            <button onClick={() => {
+              clearCookie()
+              setCookieData({});
+              setSelectedVenue(null);
+            }}>
+            Reset Cookie
+          </button>
+        </div>}
+      </div>
+      <div className="flex items-center justify-center text-2xl py-4">
+          <h1>
+            Is it Chill Tonight?  
+          </h1>
+      </div>
+      <div className="flex items-center justify-center text-lg">
+          <h3>
+            {` ${votingDay}`}
+          </h3>
+      </div>
+      <div className="max-w-2xl text-start w-full mt-8">
+        <VenueSelect venues={venues} setSelectedVenue={setSelectedVenue}></VenueSelect>
+        {selectedVenue &&
+          <Tabs defaultValue="results" className="w-full py-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="results">Results (24 hr)</TabsTrigger>
+              <TabsTrigger value="vote">Vote</TabsTrigger>
+            </TabsList>
+            <TabsContent value="results">
+                <VenueSurveyResults venue={selectedVenue} />
+            </TabsContent>
+            <TabsContent value="vote"> 
+                { votingWindowOpen ? (
+                    <VenueSurvey 
+                      venue={selectedVenue} 
+                      refetchCookie={fetchCookieData} 
+                      cookieData={cookieData}
+                    />
+                  ) : (
+                    <div className="text-center py-4">Survey opens at 8pm</div>
+                  )
+                }
+            </TabsContent>
+          </Tabs>
+        }
+      </div>
+      <div></div>
+    </main>
+  );
+}
+
+interface VenueTypeOption {
+  name: string;
+  id: string;
+}
+
+function VenueSelect({ venues, setSelectedVenue}: { venues: VenueTypeOption[], setSelectedVenue: any }) {
+  return (
+    venues && (
+      <Select onValueChange={(value) => {
+        const selectedVenue = venues.find(venue => venue.id === value);
+        setSelectedVenue(selectedVenue);
+      }}>
+        <SelectTrigger className="w-[240px]">
+          <SelectValue placeholder="Select a venue" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectLabel>Venues</SelectLabel>
+            {venues.map((venue) => {
+              return (
+                <SelectItem key={venue.id} value={venue.id}>{`${venue.name}`}</SelectItem>
+              );
+            })}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+    )
+  );
+}
+
+function VenueSurvey({venue, refetchCookie, cookieData}: {venue: VenueTypeOption, refetchCookie: any, cookieData: Record<string, string>}) {
+  const venueSurveySchema = z.object({
+    mellowOrDancey: z.number().min(0).max(100),
+    crowded: z.number().min(0).max(100),
+    securityChill: z.number().min(0).max(100),
+    ratio: z.number().min(0).max(100),
+    lineSpeed: z.number().min(0).max(100),
+    comment: z.string().max(200).optional(),
+  });
+
+  type VenueSurveyData = z.infer<typeof venueSurveySchema>;
+
+  // The time at which the survey was submitted for this venue
+  const d = cookieData[venue.name];
+  const surveySubmittedAt = d ? new Date(d) : null;
+
+  // The time at which the survey was most recently submitted
+  const latestSubmissionAt = latestSubmissionTimeFromCookie(cookieData);
+  const rateLimited = (latestSubmissionAt && (new Date().getTime() - latestSubmissionAt.getTime() < 30 * 60 * 1000)) ? true : false;
+  const formDisabled = !!(surveySubmittedAt || rateLimited);
+
+
+  const form = useForm<VenueSurveyData>({
+    resolver: zodResolver(venueSurveySchema),
+    defaultValues: {
+      mellowOrDancey: Math.floor(Math.random() * 101),
+      crowded: Math.floor(Math.random() * 101),
+      securityChill: Math.floor(Math.random() * 101),
+      ratio: Math.floor(Math.random() * 101),
+      lineSpeed: Math.floor(Math.random() * 101),
+    },
+  });
+
+  useEffect(() => {
+    form.reset({
+      mellowOrDancey: Math.floor(Math.random() * 101),
+      crowded: Math.floor(Math.random() * 101),
+      securityChill: Math.floor(Math.random() * 101),
+      ratio: Math.floor(Math.random() * 101),
+      lineSpeed: Math.floor(Math.random() * 101),
+    });
+  }, [venue]);
+
+  const onSubmit = (data: VenueSurveyData) => {
+    if(venue){
+      // Handle form submission
+      // POST the form data to /api/surveys
+      fetch('/api/surveys', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          venueId: venue.id,
+          ...data
+        }),
+      })
+      .then(response => response.json())
+      .then(result => {
+        console.log('Survey submitted successfully:', result);
+        // Set a cookie with the submission timestamp
+        markVenueAsSurveyed(venue.name);
+        // Refetch the cookie for the page
+        refetchCookie();
+      })
+      .catch(error => {
+        console.error('Error submitting survey:', error);
+        // You can add error handling logic here
+      });
+    }
+  };
+
+  return venue && (
+    <>
+    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col py-8 gap-4">
+    {
+      surveySubmittedAt && <div className="text-sm text-green-300">
+        Submitted at {surveySubmittedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })}
+      </div>
+    }
+    {
+      latestSubmissionAt && !(surveySubmittedAt) && (rateLimited) && <div className="text-sm">
+        🤠Hold up cowboy, you surveyed another venue too recently. If you happened to invent teleporation email isitchill @ oliverio.dev
+      </div>
+    }
+      <div>
+        Mellow or Dance-y?
+      </div>
+      <div className="flex gap-4 items-center">
+        <div className='text-xl'>🌴</div>
+        <Controller
+          name="mellowOrDancey"
+          control={form.control}
+          render={({ field: { onChange, value } }) => (
+            <Slider
+            className={`${formDisabled ? "cursor-not-allowed": "cursor-pointer"}`}
+              value={[value]}
+              onValueChange={(vals) => onChange(vals[0])}
+              max={100}
+              step={1}
+              disabled={formDisabled}
+            />
+          )}
+          
+        />
+        <div className='text-xl'>🕺</div>
+      </div>
+      <div>
+        Crowded?
+      </div>
+      <div className="flex gap-4 items-center">
+        <div className="text-xl">👤</div>
+        <Controller
+          name="crowded"
+          control={form.control}
+          render={({ field: { onChange, value } }) => (
+            <Slider
+            className={`${formDisabled ? "cursor-not-allowed": "cursor-pointer"}`}
+              value={[value]}
+              onValueChange={(vals) => onChange(vals[0])}
+              max={100}
+              step={1}
+              aria-label="crowded"
+              disabled={formDisabled}
+            >
+              <SliderThumb className="animate-slide-in">
+                <div className="absolute top-[-25px] left-1/2 transform -translate-x-1/2 bg-white text-black px-2 py-1 rounded text-xs animate-pop-in">
+                  Crowded
+                </div>
+              </SliderThumb>
+            </Slider>
+          )}
+        />
+        <div className="flex">
+          <div className="text-xl">👥</div>
+        </div>
+      </div>
+      <div>
+        Security Chill?
+      </div>
+    <div className="flex gap-4 items-center">
+        <div className='text-xl'>😎</div>
+        <Controller
+          name="securityChill"
+          control={form.control}
+          render={({ field: { onChange, value } }) => (
+            <Slider
+            className={`${formDisabled ? "cursor-not-allowed": "cursor-pointer"}`}
+              value={[value]}
+              onValueChange={(vals) => onChange(vals[0])}
+              max={100}
+              step={1}
+              disabled={formDisabled}
+            />
+            
+          )}
+        />
+        <div className='text-xl'>🤬</div>
+      </div>
+      <div>
+        Ratio?
+      </div>
+      <div className="flex gap-4 items-center">
+        <div className="text-xl">🙋‍♀️</div>
+        <Controller
+          name="ratio"
+          control={form.control}
+          render={({ field: { onChange, value } }) => (
+            <Slider
+            className={`${formDisabled ? "cursor-not-allowed": "cursor-pointer"}`}
+              value={[value]}
+              onValueChange={(vals) => onChange(vals[0])}
+              max={100}
+              step={1}
+              aria-label="ratio"
+              disabled={formDisabled}
+            />
+          )}
+        />
+        <div className="text-xl">🙆‍♂️</div>
+      </div>
+      <div>
+        Line Speed?
+      </div>
+      <div className="flex gap-4 items-center">
+        <div className="text-xl">💨</div>
+        <Controller
+          name="lineSpeed"
+          control={form.control}
+          render={({ field: { onChange, value } }) => (
+            <Slider
+              className={`${formDisabled ? "cursor-not-allowed": "cursor-pointer"}`}
+              value={[value]}
+              onValueChange={(vals) => onChange(vals[0])}
+              max={100}
+              step={1}
+              aria-label="lineSpeed"
+              disabled={formDisabled}
+            />
+          )}
+        />
+        <div className="text-xl">⏳</div>
+      </div>
+      <div>
+        Comment (optional)
+      </div>
+      <div className="flex gap-4 items-center">
+        <Controller
+          name="comment"
+          control={form.control}
+          render={({ field }) => (
+            <textarea
+              {...field}
+              className={`text-black w-full p-2 border rounded ${formDisabled ? "cursor-not-allowed bg-gray-100" : ""}`}
+              placeholder="Enter your comment here..."
+              maxLength={200}
+              disabled={formDisabled}
+            />
+          )}
+        />
+      </div>
+      <button 
+        type="submit" 
+        className={`mt-4 text-white px-4 py-2 rounded ${
+          form.formState.isSubmitting || form.formState.isSubmitSuccessful
+            ? 'bg-green-500' : !formDisabled ? 
+               'bg-blue-500' : 'bg-red-500'
+        } ${rateLimited ? "hover:cursor-not-allowed": ""}`}
+        disabled={
+          form.formState.isSubmitting || 
+          form.formState.isSubmitSuccessful || formDisabled
+        }
+      >
+        {form.formState.isSubmitSuccessful ? 'Submitted!' : 'Submit'}
+      </button>
+    </form>
+    </>
+  );
+}
+
+function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
+  const [surveyResults, setSurveyResults] = useState<any>();
+  const [eventsToday, setEventsToday] = useState<any>();
+
+  useEffect(() => {
+    async function fetchEvents() {
+      try {
+        console.log("SEEKING FOR ");
+        console.log(venue.id)
+        const response : any = await fetch(`/api/events?venueId=${venue.id}`);
+        if(response){
+          const data = await response.json();
+          console.log(data);
+          console.log(data.data)
+          setEventsToday(data.data);
+        }
+
+      } catch (error) {
+        console.error("Error fetching venues:", error);
+      }
+    }
+    fetchEvents();
+  }, [venue])
+
+  
+
+  useEffect(() => {
+    async function fetchSurveyResults() {
+      try {
+        const response = await fetch(`/api/surveys?venueId=${venue.id}`);
+        if(response){
+          const data = await response.json();
+          // console.log(data);
+          setSurveyResults(data);
+        }
+
+      } catch (error) {
+        console.error("Error fetching venues:", error);
+      }
+    }
+    fetchSurveyResults();
+  }, [venue]);
+  
+  return (surveyResults &&
+    <>
+    {eventsToday && eventsToday[0] && <div className="text-lg text-center">
+      {`Event today: ${eventsToday[0].title}`}
+    </div>}
+    <div className="flex flex-col py-8 gap-4">
+      <div>
+        Mellow or Dance-y?
+      </div>
+      <div className="flex gap-4 items-center">
+        <div className='text-xl'>🌴</div>
+        <SurveyResultSlider result={surveyResults.avgMellowOrDancey} label={"mellow"}/>
+        <div className='text-xl'>🕺</div>
+      </div>
+      <div>
+        Crowded?
+      </div>
+      <div className="flex gap-4 items-center">
+        <div className="text-xl">👤</div>
+        <SurveyResultSlider result={surveyResults.avgCrowded} label={"crowded"}/>
+        <div className="flex">
+          <div className="text-xl">👥</div>
+        </div>
+      </div>
+      <div>
+        Security Chill?
+      </div>
+      <div className="flex gap-4 items-center">
+        <div className='text-xl'>😎</div>
+        <SurveyResultSlider result={surveyResults.avgSecurityChill} label={"chill"}/>
+        <div className='text-xl'>🤬</div>
+      </div>
+      <div>
+        Ratio?
+      </div>
+      <div className="flex gap-4 items-center">
+        <div className="text-xl">🙋‍♀️</div>
+        <SurveyResultSlider result={surveyResults.avgRatio} label={"F/M"}/>
+        <div className="text-xl">🙆‍♂️</div>
+      </div>
+      <div>
+        Line Speed?
+      </div>
+      <div className="flex gap-4 items-center">
+      <div className="text-xl">💨</div>
+        <SurveyResultSlider result={surveyResults.avgLineSpeed} label={"fast"}/>
+        <div className="text-xl">⏳</div>
+      </div>
+    </div>
+    {surveyResults.topComments && <div className="flex justify-center items-center">
+      <CommentCarousel comments={surveyResults.topComments}/>
+    </div>}
+    {
+      surveyResults.hourlySubmissions && 
+        <div className="flex justify-center items-center w-full h-[200px] mt-12">
+        <SubmissionGraph hourlySubmissions={surveyResults.hourlySubmissions} />
+      </div>
+    }
+    </>
+  )
+}
+
+
+const SurveyResultSlider = ({ result, label }: {result: number, label: string}) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    // Simulate data loading
+    const timer = setTimeout(() => {
+      setIsLoaded(true);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const resultRounded = Math.round(result);
+  const rightSide = resultRounded > 50; 
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+    <div className="w-full mx-auto flex gap-1">
+      <motion.div
+        className={`h-4 rounded-md shadow-md bg-violet-400`}
+        initial={{ width: 0 }}
+        animate={{ width: isLoaded ? `${result}%` : 0 }}
+        transition={{ duration: 1, ease: "easeOut" }}
+      />
+      <div className="w-[2px]" /> {/* This creates the 2px gap */}
+      <motion.div
+        className={`h-4 rounded-md shadow-md bg-yellow-200`}
+        initial={{ width: "100%" }}
+        animate={{ width: isLoaded ? `${100 - result}%` : "100%" }}
+        transition={{ duration: 1, ease: "easeOut" }}
+      />
+    </div>
+    </TooltipTrigger>
+    <TooltipContent>
+      <p className="text-xxs"><span className="text-md">{`${resultRounded}`}</span>{`% ${label}`}</p>
+    </TooltipContent>
+    </Tooltip>
+    </TooltipProvider>
+  );
+};
+
+function CommentCarousel({comments} : {comments: any[]}){
+
+  const commentTime = (createdAt: string) => new Date(createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+  console.log(comments[0].createdAt);
+  return (
+    <>
+    <div className="text-2xl py-2">
+      Top Comments
+    </div>
+    <Carousel
+      opts={{
+        align: "start",
+        loop: true,
+      }}
+      orientation="vertical"
+      className="w-full "
+      plugins={[
+        Autoplay({
+          delay: 2500,
+        }),
+      ]}
+    >
+      <CarouselContent className="-mt-1 h-[100px]">
+        {comments.map((comment, index) => (
+
+          <CarouselItem key={index} className="pt-1 md:basis-1/2 ">
+            <div className="py-1">
+                <span className="text-md font-semibold text-violet-400">{`[${commentTime(comment.createdAt)}] ${comment.comment}`}</span>
+            </div>
+          </CarouselItem>
+        ))}
+      </CarouselContent>
+      {/* <CarouselPrevious />
+      <CarouselNext /> */}
+    </Carousel>
+    </>
+  )
+
+}
+
+const chartConfig = {
+  submissionCount: {
+    label: "Submission Count",
+    color: "hsl(var(--chart-1))",
+  },
+} satisfies ChartConfig
+
+function SubmissionGraph({hourlySubmissions}: {hourlySubmissions: any}){
+	const tickFormatter = (value: any, index: number) => {
+		if(index === 0){
+			return "24h"
+		} else if (index === hourlySubmissions.length -1) {
+			return "NOW"
+		} else {
+    return '';
+		}
+  };
+
+  return (
+    <>
+        <ChartContainer config={chartConfig} className="w-full h-[180px] py-4">
+          <BarChart
+            accessibilityLayer
+            data={hourlySubmissions}
+            margin={{
+              top: 20,
+            }}
+          >
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="hour"
+              tickLine={false}
+              tickMargin={10}
+              axisLine={true}
+							tickFormatter={tickFormatter}
+            />
+            <ChartTooltip
+              cursor={false}
+              content={<ChartTooltipContent hideLabel />}
+            />
+            <Bar dataKey="submissionCount" fill="#A78BFA" radius={8}>
+              {/* <LabelList
+                position="top"
+                offset={12}
+                className="fill-foreground"
+                fontSize={12}
+              /> */}
+            </Bar>
+          </BarChart>
+        </ChartContainer>
+      <div className="text-right">
+        Pulse Check
+      </div>
+      </>
+  )
 }

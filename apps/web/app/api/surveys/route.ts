@@ -130,6 +130,7 @@ export async function GET(request: NextRequest) {
         submissionHour: hourString,
         submissionCount: existingSubmission ? existingSubmission.submissionCount : 0
       });
+      
     }
 
     const response = {
