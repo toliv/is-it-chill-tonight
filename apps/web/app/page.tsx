@@ -264,7 +264,7 @@ function VenueSurvey({venue, refetchCookie, cookieData}: {venue: VenueTypeOption
 
   return venue && (
     <>
-    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col py-8 gap-4">
+    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col py-8 gap-3">
     {
       surveySubmittedAt && <div className="text-sm text-green-300">
         Submitted at {surveySubmittedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })}
@@ -437,13 +437,9 @@ function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
   useEffect(() => {
     async function fetchEvents() {
       try {
-        console.log("SEEKING FOR ");
-        console.log(venue.id)
         const response : any = await fetch(`/api/events?venueId=${venue.id}`);
         if(response){
           const data = await response.json();
-          console.log(data);
-          console.log(data.data)
           setEventsToday(data.data);
         }
 
@@ -454,7 +450,6 @@ function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
     fetchEvents();
   }, [venue])
 
-  
 
   useEffect(() => {
     async function fetchSurveyResults() {
@@ -462,7 +457,6 @@ function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
         const response = await fetch(`/api/surveys?venueId=${venue.id}`);
         if(response){
           const data = await response.json();
-          // console.log(data);
           setSurveyResults(data);
         }
 
@@ -474,11 +468,20 @@ function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
   }, [venue]);
   
   return (surveyResults &&
-    <>
-    {eventsToday && eventsToday[0] && <div className="text-lg text-center">
-      {`Event ${new Date(eventsToday[0].startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}: ${eventsToday[0].title}`}
+    <div>
+    {eventsToday && eventsToday[0] && 
+    <div className="py-4">
+    {/* <div className="text-lg">Next event</div> */}
+    <div className="flex items-center justify-around text-lg py-4">
+      <div>
+      {`${new Date(eventsToday[0].startTime).toLocaleDateString('en-US', {month: "long", day: "numeric"})} @ ${new Date(eventsToday[0].startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}`}
+      </div>
+      <div className="text-right">
+        {`${eventsToday[0].title}`}
+      </div>
+    </div>
     </div>}
-    <div className="flex flex-col py-8 gap-4">
+    <div className="flex flex-col py-4 gap-3">
       <div>
         Mellow or Dance-y?
       </div>
@@ -531,7 +534,7 @@ function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
         <SubmissionGraph hourlySubmissions={surveyResults.hourlySubmissions} />
       </div>
     }
-    </>
+    </div>
   )
 }
 
@@ -583,7 +586,6 @@ function CommentCarousel({comments} : {comments: any[]}){
 
   const commentTime = (createdAt: string) => new Date(createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 
-  console.log(comments[0].createdAt);
   return (
     <>
     <div className="text-2xl py-2">

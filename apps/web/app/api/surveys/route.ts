@@ -86,18 +86,18 @@ export async function GET(request: NextRequest) {
     .from(surveys)
     .where(
       sql`${surveys.venueId} = ${venueId} AND 
-          comment IS NOT NULL`
-    ).limit(10);
+          comment IS NOT NULL AND 
+          ${surveys.createdAt} >= strftime('%s', datetime('now', '-24 hours')) * 1000`
+    ).orderBy(desc(surveys.createdAt)).limit(10);
 
-    topComments = [...topComments, 
-      {comment: "The fucking DJ still hasn't come on yet. What the hell", createdAt: new Date()},
-      {comment: "many more one", createdAt: new Date()},
-      {comment: "No wayne", createdAt: new Date()},
-      {comment: "An one", createdAt: new Date()},
-      {comment: "An", createdAt: new Date()},
-      {comment: "Antony one", createdAt: new Date()},
-      {comment: "Another one", createdAt: new Date()},
-    ]
+    if(topComments.length < 5){
+      topComments = [...topComments, 
+        {comment: "The DJ hasn't come on yet... ", createdAt: new Date()},
+        {comment: "Why are drinks so expensive", createdAt: new Date()},
+        {comment: "Hi Mom", createdAt: new Date()},
+        {comment: "Afters ??", createdAt: new Date()},
+      ]
+    }
 
     // Get histogram data
     const hourlySubmissions = await db

@@ -52,8 +52,8 @@ export async function GET(request: NextRequest) {
     .from(events)
     .where(
       sql`${events.venueId} = ${venueId} AND 
-          (${events.startTime} <= ${currentNYTime.getTime()} AND ${events.endTime} >= ${currentNYTime.getTime()}) OR
-          (${events.startTime} > ${currentNYTime.getTime()})`
+          ((${events.startTime} <= ${currentNYTime.getTime()} AND ${events.endTime} >= ${currentNYTime.getTime()}) OR
+          (${events.startTime} > ${currentNYTime.getTime()}))`
     )
     .orderBy(asc(events.startTime))
 
