@@ -8,15 +8,12 @@ export async function syncEventDatabase(eventListings: EventListing[]){
   // Bring venues into memory bc small size
   const allSurveys = await db.select().from(surveys);
   const allVenues = await db.select({id:venues.id, name: venues.name}).from(venues);
-  console.log("allVenues")
-  console.log(allVenues)
   const quickMap = new Map<string,string>();
   allVenues.map((venue) => quickMap.set(venue.name.toLowerCase(), venue.id));
 
-  console.log("quickMap")
-  console.log(quickMap)
-
   const toInsert: typeof events.$inferInsert[] = [];
+
+  const missingVenues = new Set<string>();
 
   eventListings.map(async (eventListing) => {
     const fields = extractEventFields(eventListing);
@@ -35,8 +32,11 @@ export async function syncEventDatabase(eventListings: EventListing[]){
       toInsert.push(withVenueId);
     } else {
       console.log(`Couldn't find matching venue ${fields.venueName}`);
+      missingVenues.add(fields.venueName);
     }
   });
+  missingVenues.forEach(venue => console.log(`Missing venue: ${venue}`));
+
   console.log(`Inserting ${toInsert.length} records`);
   // If we've already inserted some ID, we won't again.
   return await db.insert(events).values(toInsert).onConflictDoNothing().returning({id: events.id});

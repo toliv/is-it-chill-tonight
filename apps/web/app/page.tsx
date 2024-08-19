@@ -476,7 +476,7 @@ function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
   return (surveyResults &&
     <>
     {eventsToday && eventsToday[0] && <div className="text-lg text-center">
-      {`Event today: ${eventsToday[0].title}`}
+      {`Event ${new Date(eventsToday[0].startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}: ${eventsToday[0].title}`}
     </div>}
     <div className="flex flex-col py-8 gap-4">
       <div>

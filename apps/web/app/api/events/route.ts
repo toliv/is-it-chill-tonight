@@ -42,22 +42,24 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Fetch events for the specified venueId starting from today at 6 AM
-  const today = new Date();
-  today.setHours(6, 0, 0, 0); // Set to 6 AM today
+  // Fetch the current time in NY timezone
+  const currentTime = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
+  const currentNYTime = new Date(currentTime);
 
-  const venueEvents = await db
+  // Fetch the next event occurring right now or the next closest event
+  const nextEvents = await db
     .select()
     .from(events)
     .where(
       sql`${events.venueId} = ${venueId} AND 
-          ${events.startTime} >= ${today.getTime()}`
+          (${events.startTime} <= ${currentNYTime.getTime()} AND ${events.endTime} >= ${currentNYTime.getTime()}) OR
+          (${events.startTime} > ${currentNYTime.getTime()})`
     )
-    .orderBy(asc(events.startTime));
+    .orderBy(asc(events.startTime))
 
-  return new Response(JSON.stringify({data: venueEvents}), {
-    headers: { 'Content-Type': 'application/json' },
-  });
+    return new Response(JSON.stringify({data: nextEvents}), {
+      headers: { 'Content-Type': 'application/json' },
+    });
 
 }
 
@@ -65,7 +67,6 @@ async function syncEvents(){
   const events = await fetchEvents();
   if(events){
     console.log("syncing events database");
-    // TODO: SYNC ALL EVENTS
     const inserted = await syncEventDatabase(events);
     // Insert a watermark
     await db.insert(eventSyncWatermarks).values({

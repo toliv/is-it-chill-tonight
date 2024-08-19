@@ -438,13 +438,9 @@ function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
   useEffect(() => {
     async function fetchEvents() {
       try {
-        console.log("SEEKING FOR ");
-        console.log(venue.id)
         const response : any = await fetch(`/api/events?venueId=${venue.id}`);
         if(response){
           const data = await response.json();
-          console.log(data);
-          console.log(data.data)
           setEventsToday(data.data);
         }
 
@@ -463,7 +459,6 @@ function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
         const response = await fetch(`/api/surveys?venueId=${venue.id}`);
         if(response){
           const data = await response.json();
-          // console.log(data);
           setSurveyResults(data);
         }
 
@@ -477,7 +472,7 @@ function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
   return (surveyResults &&
     <>
     {eventsToday && eventsToday[0] && <div className="text-lg text-center">
-      {`Event today: ${eventsToday[0].title}`}
+      {`Eventttt ${new Date(eventsToday[0].startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}: ${eventsToday[0].title}`}
     </div>}
     <div className="flex flex-col py-8 gap-4">
       <div>
@@ -585,7 +580,6 @@ function CommentCarousel({comments} : {comments: any[]}){
 
   const commentTime = (createdAt: string) => new Date(createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 
-  console.log(comments[0].createdAt);
   return (
     <>
     <div className="text-2xl py-2">
