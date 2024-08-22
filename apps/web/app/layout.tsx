@@ -26,6 +26,8 @@ export default function RootLayout({
 	return (
 		<html lang="en">
 			<head>
+				{/* Cloudflare analytics */}
+			<script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "b70669a47b1a489f9378f72b8173cbd5"}'></script>
 				<ThemeScript />
 			</head>
 			<body className={`${serverMono.variable} font-sans`}>{children}</body>

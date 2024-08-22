@@ -132,7 +132,7 @@ export default function Page() {
       <div className="max-w-2xl text-start w-full mt-8">
         <VenueSelect venues={venues} setSelectedVenue={setSelectedVenue}></VenueSelect>
         {selectedVenue &&
-          <Tabs defaultValue="results" className="w-full py-4">
+          <Tabs defaultValue="results" className="w-full py-4 mt-4">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="results">Results (24 hr)</TabsTrigger>
               <TabsTrigger value="vote">Vote</TabsTrigger>
@@ -634,7 +634,7 @@ function SubmissionGraph({hourlySubmissions}: {hourlySubmissions: any}){
 		if(index === 0){
 			return "24h"
 		} else if (index === hourlySubmissions.length -1) {
-			return "NOW"
+			return "Now"
 		} else {
     return '';
 		}
@@ -656,7 +656,9 @@ function SubmissionGraph({hourlySubmissions}: {hourlySubmissions: any}){
               tickLine={false}
               tickMargin={10}
               axisLine={true}
-							tickFormatter={tickFormatter}
+              tickFormatter={tickFormatter}
+              padding={{ right: 10, left: 10 }}
+              interval={0} // Ensure all ticks are shown
             />
             <ChartTooltip
               cursor={false}
