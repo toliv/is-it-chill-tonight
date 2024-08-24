@@ -481,6 +481,9 @@ function VenueSurveyResults({venue} : {venue:VenueTypeOption }){
       </div>
     </div>
     </div>}
+    <div className="text-sm text-gray-400">
+      {`Showing results from ${surveyResults.count} submissions`} 
+    </div>
     <div className="flex flex-col py-4 gap-3">
       <div>
         Mellow or Dance-y?

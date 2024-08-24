@@ -6,13 +6,10 @@ import { DateTime } from "luxon";
 
 
 export async function syncEventDatabase(eventListings: EventListing[]){
-  console.log("syncing")
   // Bring venues into memory bc small size
-  const allSurveys = await db.select().from(surveys);
   const allVenues = await db.select({id:venues.id, name: venues.name}).from(venues);
   const quickMap = new Map<string,string>();
   allVenues.map((venue) => quickMap.set(venue.name.toLowerCase(), venue.id));
-
   const toInsert: typeof events.$inferInsert[] = [];
 
   const missingVenues = new Set<string>();
@@ -22,9 +19,6 @@ export async function syncEventDatabase(eventListings: EventListing[]){
     // Search for venue ID
     // Better solution is probably to backfill a RA ID on the venue table
     const venueId = quickMap.get(fields.venueName.toLowerCase());
-    console.log("startTime")
-    console.log(fields.startTime)
-    console.log(typeof fields.startTime);
     if(venueId){
       // Have a hit on the venue
       const withVenueId = {
