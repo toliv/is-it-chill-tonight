@@ -163,6 +163,7 @@ export default function Page() {
 interface VenueTypeOption {
   name: string;
   id: string;
+  surveyCount: number;
 }
 
 function VenueSelect({ venues, setSelectedVenue}: { venues: VenueTypeOption[], setSelectedVenue: any }) {
@@ -179,8 +180,9 @@ function VenueSelect({ venues, setSelectedVenue}: { venues: VenueTypeOption[], s
           <SelectGroup>
             <SelectLabel>Venues</SelectLabel>
             {venues.map((venue) => {
+              const name = venue.surveyCount > 0 ? `🔥 ${venue.name}` : ` ${venue.name}`;
               return (
-                <SelectItem key={venue.id} value={venue.id}>{`${venue.name}`}</SelectItem>
+                <SelectItem key={venue.id} value={venue.id}>{`${name}`}</SelectItem>
               );
             })}
           </SelectGroup>
