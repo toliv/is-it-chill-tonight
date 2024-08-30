@@ -16,7 +16,8 @@ INSERT INTO venues (id, name) VALUES
   ('14', 'Good Room'),
   ('15', 'Superior Ingredients'),
   ('16', 'House of Yes'),
-  ('17', 'H0L0')
+  ('17', 'H0L0'),
+  ('18', 'The Dean NYC')
 ON CONFLICT(id) DO NOTHING;
 
 -- Verify the upsert
