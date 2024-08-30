@@ -30,7 +30,14 @@ export default function RootLayout({
 			<script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "b70669a47b1a489f9378f72b8173cbd5"}'></script>
 				<ThemeScript />
 			</head>
-			<body className={`${serverMono.variable} font-sans`}>{children}</body>
+			<body className={`${serverMono.variable} font-sans`}>
+				<div className="banner text-center bg-yellow-200 text-black py-2 w-full">
+					<a href="https://hausofvibes.substack.com/">
+						As featured on Haus of Vibes!
+					</a>
+				</div>
+				{children}
+			</body>
 		</html>
 	);
 }
